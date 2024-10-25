@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::Add};
+use std::{fmt::Display, ops::{Add, Sub}};
 
 #[macro_export]
 macro_rules! c3d3 {
@@ -6,14 +6,8 @@ macro_rules! c3d3 {
         Coord3{x: $x, y: $y, z: $z}
     };
 }
-#[macro_export]
-macro_rules! sqr {
-    ($x:expr) => {
-        $x * $x
-    };
-}
 
-#[derive(PartialEq, Clone, Hash, Eq)] //copy?
+#[derive(PartialEq, Clone, Copy, Hash, Eq)]
 pub struct Coord3{
     pub x: i32,
     pub y: i32,
@@ -34,6 +28,12 @@ impl Add for Coord3 {
     fn add(self, rhs: Self) -> Self::Output {
         c3d3!(self.x+rhs.x, self.y+rhs.y, self.z+rhs.z)
     }
+}
+impl Sub for Coord3{
+    fn sub(self, rhs: Self) -> Self::Output {
+        c3d3!(self.x+rhs.x, self.y+rhs.y, self.z+rhs.z) 
+    }
+    type Output = Coord3;
 }
 impl Display for Coord3 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -70,6 +70,22 @@ impl Coord3 {
     }
 
     pub const fn magnitude2(&self) -> i32{
-        sqr!(self.x)+sqr!(self.y)+sqr!(self.z)
+        self.x.pow(2)+self.y.pow(2)+self.z.pow(2)
+    }
+    pub fn distance2(&self, other: Coord3) -> i32{
+        (*self-other).magnitude2()
+    }
+    pub fn div_euclid(&self, value: i32) -> Coord3{
+        c3d3!(self.x.div_euclid(value), self.y.div_euclid(value), self.z.div_euclid(value))
+    }
+    pub fn mod_euclid(&self, value: i32) -> Coord3{
+        c3d3!(self.x.rem_euclid(value), self.y.rem_euclid(value), self.z.rem_euclid(value))
+    }
+
+    pub fn to_usize3(&self) -> Result<(usize, usize, usize), String>{
+        if self.x<0 || self.y<0 || self.z<0{
+            return Err("Wrong value".to_string());
+        }
+        return Ok((self.x as usize, self.y as usize, self.z as usize));
     }
 }

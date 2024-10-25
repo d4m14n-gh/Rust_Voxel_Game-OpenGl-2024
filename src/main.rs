@@ -1,36 +1,65 @@
 mod coords;
+mod chunk;
+//mod chunk_master; 
 mod chunk_loader;
 
-use std::*;
-use chunk_loader::ChunkLoader;
-use io::Write;
-use coords::*;
-use time::Duration;
 
+use std::*;
+use dashmap::DashMap;
+use chunk_loader::*;
+use coords::*;
+use chunk::*;
+use log::{info, warn};
+use winit::{
+    event::*,
+    event_loop::EventLoop,
+    keyboard::{KeyCode, PhysicalKey},
+    window::WindowBuilder,
+};
+// for value in loader.get_coords_to_load().try_iter(){
+//     println!("{}", value);
+//     master_map.insert(value, Chunk::default());
+    
+//     let mut chunkers = master_map.get_mut(&value).unwrap();
+//     for xi in 0..CHUNK_SIZE/2{
+//         for yi in 0..CHUNK_SIZE{
+//             for zi in 0..CHUNK_SIZE{
+//                 let local = c3d3!(xi as i32, yi as i32, zi as i32);
+//                 chunkers.set_voxel(local, 1);
+//             }    
+//         }        
+//     }
+// }
 
 fn main() {
     let current = thread::current();
     println!("{:?}", current.name());
     
-    let mut loader: ChunkLoader = ChunkLoader::default();
-    loader.set_load_distance(5);
-    loader.set_world_positon(c3d3!(1, 2, 3));
-    loader.commit_world_positon();
-    while true {
-        for value in loader.get_coords_to_load().try_iter(){
-            println!("{}", value);
-        }
+    env_logger::init();
+    let event_loop = EventLoop::new().unwrap();
+    let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-        print!("Wprowadź coś: ");
-        io::stdout().flush().unwrap();
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        match input.as_str() {
-            "q" => break, 
-            _ => println!("zzz...")
-        }
+    event_loop.run(move |event, control_flow| 
+        match event {
+        Event::WindowEvent {
+            ref event,
+            window_id,
+        } 
+        if window_id == window.id() => 
+            match event {
+                WindowEvent::CloseRequested | WindowEvent::KeyboardInput {
+                    event:
+                        KeyEvent {
+                            state: ElementState::Pressed,
+                            physical_key: PhysicalKey::Code(KeyCode::Escape),
+                            ..
+                        },
+                    ..
+                } => control_flow.exit(),
+                _ => {}
+            },
+        _ => {}
+    }).unwrap();
 
-        //thread::sleep(Duration::from_millis(10));
-    } 
     println!("program ends");
 }

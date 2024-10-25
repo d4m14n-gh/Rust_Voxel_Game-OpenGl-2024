@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-glium = "0.36.0"
-glutin = "0.32.1"
+dashmap = "6.1.0"
 hashbrown = "0.15.0"
+winit = { version = "0.29", features = ["rwh_05"] }
+env_logger = "0.10"
+log = "0.4"
+wgpu = "22.0"
