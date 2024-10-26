@@ -2,7 +2,7 @@ use crate::{c3d3, coords::*};
 use dashmap::DashSet;
 use std::{
     sync::mpsc::{self, Receiver},
-    thread
+    thread::{self, JoinHandle}
 }; 
 
 pub struct ChunkLoader{
@@ -42,7 +42,8 @@ impl ChunkLoader{
         self.request_world_position = new_position;
     }
 
-    pub fn commit_world_positon(&mut self){
+    pub fn commit_world_positon(&mut self) -> Vec<JoinHandle<()>>{
+        let mut joins: Vec<JoinHandle<()>> = Vec::new(); 
         if self.request_world_position != self.world_position || self.loaded_set.is_empty(){
             self.world_position = self.request_world_position;
             
@@ -50,8 +51,8 @@ impl ChunkLoader{
             let center = self.world_position;
             let new_sender = self.new_channel.0.clone();
             let old_sender = self.old_channel.0.clone();
-            let mut loaded_set_clone = self.loaded_set.clone();
-            thread::spawn(move ||{
+            let loaded_set_clone = self.loaded_set.clone();
+            joins.push(thread::spawn(move ||{
                 let mut to_remove: Vec<Coord3> = Vec::new();
                 for position in loaded_set_clone.iter(){
                     if position.distance2(center) < ld.pow(2){
@@ -76,12 +77,13 @@ impl ChunkLoader{
                         }
                     }
                 }
-            }); 
+            }));
         }
+        joins
     }
     
     pub fn should_be_loaded(&self, value: Coord3) -> bool{
-        return self.world_position.distance2(value) < self.load_distance.pow(2);
+        self.world_position.distance2(value) < self.load_distance.pow(2)
     }
 
     pub fn get_coords_to_load(&mut self) -> &mut Receiver<Coord3>{

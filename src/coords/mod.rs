@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::{Add, Sub}};
+use std::{fmt::Display, ops::{Add, Mul, Sub}, process::Output};
 
 #[macro_export]
 macro_rules! c3d3 {
@@ -31,7 +31,7 @@ impl Add for Coord3 {
 }
 impl Sub for Coord3{
     fn sub(self, rhs: Self) -> Self::Output {
-        c3d3!(self.x+rhs.x, self.y+rhs.y, self.z+rhs.z) 
+        c3d3!(self.x-rhs.x, self.y-rhs.y, self.z-rhs.z) 
     }
     type Output = Coord3;
 }
@@ -40,7 +40,12 @@ impl Display for Coord3 {
         write!(f, "x:{}, y:{} z:{}", self.x, self.y, self.z)
     }
 }
-
+impl Mul<i32> for Coord3 {
+    type Output = Coord3;
+    fn mul(self, scalar: i32) -> Coord3 {
+        c3d3!(self.x*scalar, self.y*scalar, self.z*scalar)
+    }
+}
 impl Coord3 {
     pub const fn from_tuple(tp: &(i32, i32, i32)) -> Coord3 {
         Coord3{
@@ -84,8 +89,8 @@ impl Coord3 {
 
     pub fn to_usize3(&self) -> Result<(usize, usize, usize), String>{
         if self.x<0 || self.y<0 || self.z<0{
-            return Err("Wrong value".to_string());
+            return Err("Wrong value".to_string())
         }
-        return Ok((self.x as usize, self.y as usize, self.z as usize));
+        Ok((self.x as usize, self.y as usize, self.z as usize))
     }
 }
