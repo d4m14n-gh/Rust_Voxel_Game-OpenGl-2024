@@ -40,12 +40,16 @@ impl WorldGenerator {
     const STONE_LAYER: i32 = 5;
     const WATER_LEVEL: i32 = 4;
     pub fn get_terrein_height(&self, world_position: Coord3) -> i32{
-        (7.0*(world_position.x as f32/10.0).sin()+2.0) as i32
+        (7.0*(world_position.x as f32/10.0+world_position.z as f32/20.0).sin()+2.0) as i32
     }
     pub fn get_voxel_type(&self, world_position: Coord3) -> BlockType{
         let wy = world_position.y;
         let th = self.get_terrein_height(world_position);
-        if wy == th && wy > WorldGenerator::WATER_LEVEL+1{
+
+        if world_position.distance2(Coord3::default()) > 50*50{
+            return BlockType::Air;
+        }     
+        else if wy == th && wy > WorldGenerator::WATER_LEVEL+1{
             return BlockType::Grass
         }
         else if wy==th || (wy==th-1 && th<WorldGenerator::WATER_LEVEL) {
@@ -64,7 +68,7 @@ impl WorldGenerator {
     }
     pub fn generate_chunk(&self, chunk: &mut Chunk){
         for local_position in ChunkCoordsIterator::new(){
-            let voxel_type = self.get_voxel_type(chunk.get_world_positon(local_position)) as usize;
+            let voxel_type = self.get_voxel_type(chunk.get_world_position(local_position)) as usize;
             if voxel_type != 0{
                 chunk.set_voxel(local_position, voxel_type);
             }

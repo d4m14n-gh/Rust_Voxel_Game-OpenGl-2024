@@ -2,11 +2,11 @@ use std::ffi::CString;
 use std::time::Instant;
 
 use gl;
-use glutin::event::{Event, WindowEvent};
+use glutin::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::ContextBuilder;
-use glutin::dpi::{LogicalSize, Position};
+use glutin::dpi::LogicalSize;
 use nalgebra::Point3;
 
 use crate::camera::Camera;
@@ -52,22 +52,6 @@ pub fn draw(mut vertices: Vec<f32>) {
     let gl_window = unsafe { gl_window.make_current().unwrap() };
 
     gl::load_with(|symbol| gl_window.get_proc_address(symbol) as *const _);
-
-    // Dane wierzchołków trójkąta
-    let vertices_new: Vec<f32> = vec![
-        -0.5, -0.5, 0.0,  // Lewy dolny
-        0.5, -0.5, 0.0,  // Prawy dolny
-        0.0,  0.5, 0.0,   // Górny środkowy,
-       
-        -0.3, 0.5, 0.0,  // Lewy dolny
-        0.3, 0.5, 0.0,  // Prawy dolny
-        0.0,  1.5, 0.0,   // Górny środkowy
-        
-        -0.4, 0.0, 0.0,  // Lewy dolny
-        0.4, 0.0, 0.0,  // Prawy dolny
-        0.0,  1.0, 0.0
-    ];
-    //vertices = vertices_new; 
 
     // Tworzenie VBO i VAO
     let mut vbo = 0;
@@ -156,22 +140,43 @@ pub fn draw(mut vertices: Vec<f32>) {
                         println!("{interval} {}", 1000000/interval);
                     }
                     delta = start_time.elapsed().as_micros();
-                    let d = delta as f32/1e6/2.0;
-                    let r = 50.0;
-                    let camera_position = Point3::new(r*d.sin(), 10.25, r*d.cos());
+                    let d = delta as f32/1e6/15.0;
+                    let r = 120.0;
+                    let camera_position = Point3::new(r*d.sin(), 30.25, r*d.cos());
                     camera.set_camera_position(camera_position);
 
-                    let c = 1;
-                    for i in -c..c{
-                        gl::Uniform1f(time_location, i as f32/c as f32);
+
+                        gl::Uniform1f(time_location, d);
                         gl::UniformMatrix4fv(projection_location, 1, gl::FALSE, camera.get_projection_matrix().as_ptr());
                         gl::UniformMatrix4fv(view_location, 1, gl::FALSE, camera.get_view_matrix().as_ptr());
                         gl::DrawArrays(gl::TRIANGLES, 0, (vertices.len()/6) as i32);
-                    }
+                    
                 }
 
                 gl_window.swap_buffers().unwrap();
             },
+            Event::WindowEvent { event: WindowEvent::KeyboardInput { input: KeyboardInput { state, virtual_keycode, .. }, .. }, .. } => {
+                if let Some(keycode) = virtual_keycode {
+                    let mut camera_position = camera.get_camera_position();
+                    let movement_speed = 5e-1;
+                    match (keycode, state) {
+                        (VirtualKeyCode::W, ElementState::Pressed) => {
+                            camera_position.z -= movement_speed; // Ruch do przodu
+                        }
+                        (VirtualKeyCode::S, ElementState::Pressed) => {
+                            camera_position.z += movement_speed; // Ruch do tyłu
+                        }
+                        (VirtualKeyCode::A, ElementState::Pressed) => {
+                            camera_position.x -= movement_speed; // Ruch w lewo
+                        }
+                        (VirtualKeyCode::D, ElementState::Pressed) => {
+                            camera_position.x += movement_speed; // Ruch w prawo
+                        }
+                        _ => {}
+                    }
+                    camera.set_camera_position(camera_position);
+                }
+            }
             _ => (),
         }
     });

@@ -50,30 +50,43 @@ fn main() {
         
     ];
     let wall = vec![
-        Vector3::new(0.5, -0.5, -0.5),
-        Vector3::new(0.5, -0.5, 0.5),
+        Vector3::new(-0.5, 0.5, -0.5),
+        Vector3::new(0.5, 0.5, -0.5),
         Vector3::new(0.5, 0.5, 0.5),
 
-        Vector3::new(0.5, -0.5, -0.5),
-        Vector3::new(0.5, 0.5, -0.5),
+        Vector3::new(-0.5, 0.5, -0.5),
+        Vector3::new(-0.5, 0.5, 0.5),
         Vector3::new(0.5, 0.5, 0.5)
     ];
 
     
-    let mut add_wall = |p: Coord3, m: f32, i:i32, c: usize|{
+    let mut add_wall = |p: Coord3, m: f32, i:i32, c: usize, ao: u32|{
+        let mut cnt = 0;
         for of in wall.iter(){
             let f = match i {
-                1 => of.yzx(),
-                2 => of.yxz(),
-                _ => of.xyz()
+                2 => of.xzy(),
+                0 => of.xyz(),
+                _ => of.yxz()
             };
             vertices.push(p.x as f32+m*f.x);
             vertices.push(p.y as f32+m*f.y);
             vertices.push(p.z as f32+m*f.z);
 
-            let c = WorldGenerator::get_color(c);
+            let z = cnt%6;
+            let z = match z {
+                1 => 1,
+                2 => 2,
+                4 => 3,
+                5 => 2,
+                _ => 0
+            };
+            let mut c = WorldGenerator::get_color(c);
+            if ao & 1<<((i*2+((-m as i32+1)/2))*4+z) > 0{
+                c = c-Vector3::new(0.1, 0.1, 0.1);
+            }
+            cnt += 1;
             vertices.push(c.x);
-            vertices.push(c.y);
+            vertices.push(c.y+(p.z as f32/10.0).sin()/16.0);
             vertices.push(c.z);
         }
     };
@@ -81,7 +94,7 @@ fn main() {
     
     let generator = WorldGenerator::default();
     let mut loader = ChunkLoader::default();
-    loader.set_load_distance(5);
+    loader.set_load_distance(10);
     
     let joins = loader.commit_world_positon();
     for j in joins.into_iter(){
@@ -91,20 +104,28 @@ fn main() {
     while true {
         if let Ok(w) = loader.get_coords_to_load().try_recv(){
             let mut chunkers = Chunk::default();
-            chunkers.set_chunk_positon(w);    
+            chunkers.set_chunk_position(w);    
             generator.generate_chunk(&mut chunkers);
             
+            let faces_table = chunkers.calculate_faces_table();
+            
+            let c = |world_position: Coord3| generator.get_voxel_type(world_position) as usize;
+            let ao_table = chunkers.calculate_ambient_occlusion(c);
+
             for index in chunkers.get_voxels(){
                 let voxel_type = chunkers.get_voxel_from_index(*index);
                 let pos: Coord3 = Chunk::get_local_position_from_index(*index);
-                let pos = chunkers.get_world_positon(pos);
+                let pos = chunkers.get_world_position(pos);
                 
                 //println!("{} {} {}", pos.x, pos.y, pos.z);
                 //top
                 
-                for m in vec![-1.0, 1.0]{
-                    for i in 0..3{
-                        add_wall(pos, m, i, voxel_type);
+                
+                for i in 0..3{
+                    for m in [1.0, -1.0]{
+                        if faces_table[*index] & 1<<( i*2+(-m as i32+1)/2)==0{
+                            add_wall(pos, m, i, voxel_type, ao_table[*index]);
+                        } 
                     }
                 }
             }

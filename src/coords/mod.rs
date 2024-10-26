@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::{Add, Mul, Sub}, process::Output};
+use std::{array::IntoIter, fmt::Display, ops::{Add, Mul, Sub}};
 
 #[macro_export]
 macro_rules! c3d3 {
@@ -92,5 +92,18 @@ impl Coord3 {
             return Err("Wrong value".to_string())
         }
         Ok((self.x as usize, self.y as usize, self.z as usize))
+    }
+    pub fn upper(&self) -> Coord3{
+        *self+c3d3!(0, 1, 0)
+    }
+    pub fn lower(&self) -> Coord3{
+        *self+c3d3!(0, -1, 0)
+    }
+    pub fn neightbors_into_iter() -> IntoIter<Coord3, 6>{
+        const NEIGHTBORS: [Coord3; 6]  = [
+            c3d3!(0, 1, 0), c3d3!(0, -1, 0), c3d3!(1, 0, 0), 
+            c3d3!(-1, 0, 0), c3d3!(0, 0, 1), c3d3!(0, 0, -1)
+        ];
+        NEIGHTBORS.into_iter()
     }
 }
