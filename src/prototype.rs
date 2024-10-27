@@ -140,7 +140,7 @@ pub fn draw(mut vertices: Vec<f32>) {
                         println!("{interval} {}", 1000000/interval);
                     }
                     delta = start_time.elapsed().as_micros();
-                    let d = delta as f32/1e6/15.0;
+                    let d = delta as f32/1e6/2.0;
                     let r = 120.0;
                     let camera_position = Point3::new(r*d.sin(), 30.25, r*d.cos());
                     camera.set_camera_position(camera_position);

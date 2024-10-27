@@ -18,7 +18,7 @@ impl Default for Chunk{
     }
 }
 impl Chunk {
-    const CHUNK_SIZE: usize = 8;
+    const CHUNK_SIZE: usize = 16;
     pub fn is_border(local_position: Coord3) -> bool{
         (local_position.x == 0) | (local_position.x == Chunk::CHUNK_SIZE as i32-1)
         | (local_position.y == 0) | (local_position.y == Chunk::CHUNK_SIZE as i32-1)

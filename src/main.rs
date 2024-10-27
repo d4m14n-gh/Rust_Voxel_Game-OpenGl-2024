@@ -94,24 +94,26 @@ fn main() {
     
     let generator = WorldGenerator::default();
     let mut loader = ChunkLoader::default();
-    loader.set_load_distance(10);
+    loader.set_load_distance(5);
     
     let joins = loader.commit_world_positon();
     for j in joins.into_iter(){
         j.join().unwrap();
     }
 
-    while true {
-        if let Ok(w) = loader.get_coords_to_load().try_recv(){
+    for w in loader.get_coords_to_load().try_iter(){
             let mut chunkers = Chunk::default();
             chunkers.set_chunk_position(w);    
             generator.generate_chunk(&mut chunkers);
             
+            println!("Calculating faces table!");
             let faces_table = chunkers.calculate_faces_table();
             
             let c = |world_position: Coord3| generator.get_voxel_type(world_position) as usize;
+            println!("Calculating ambient occlusion!");
             let ao_table = chunkers.calculate_ambient_occlusion(c);
-
+            
+            println!("Adding walls!!");
             for index in chunkers.get_voxels(){
                 let voxel_type = chunkers.get_voxel_from_index(*index);
                 let pos: Coord3 = Chunk::get_local_position_from_index(*index);
@@ -129,10 +131,6 @@ fn main() {
                     }
                 }
             }
-        }
-        else {
-            break;
-        }
     }
     prototype::draw(vertices);
 
