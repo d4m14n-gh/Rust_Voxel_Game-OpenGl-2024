@@ -6,10 +6,12 @@ use glutin::event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEv
 use glutin::event_loop::{ControlFlow, EventLoop};
 use glutin::window::WindowBuilder;
 use glutin::ContextBuilder;
-use glutin::dpi::LogicalSize;
+use glutin::dpi::{LogicalSize, PhysicalPosition};
 use nalgebra::Point3;
 
 use crate::camera::Camera;
+use crate::player::Player;
+use crate::Vec3;
 
 // Vertex shader w GLSL
 const VERTEX_SHADER: &str = r#"
@@ -96,28 +98,32 @@ pub fn draw(mut vertices: Vec<f32>) {
 
     // Kompilacja shaderów
     let shader_program = compile_shader_program(VERTEX_SHADER, FRAGMENT_SHADER);
-    let start_time: Instant = Instant::now();
-    let mut frame_cnt = 0;
-    let mut delta = start_time.elapsed().as_millis();
+                
+                let start_time: Instant = Instant::now();
+                let mut frame_cnt = 0;
+                let mut delta = start_time.elapsed().as_millis();
 
-    let mut time_location = 0;
-    unsafe {
-        time_location = gl::GetUniformLocation(shader_program, CString::new("time").unwrap().as_ptr());
-    };
-    let mut projection_location = 0;
-    unsafe {
-        projection_location = gl::GetUniformLocation(shader_program, CString::new("projection").unwrap().as_ptr());
-    };
-    let mut view_location = 0;
-    let mut camera = Camera::default();
-    unsafe {
-        view_location = gl::GetUniformLocation(shader_program, CString::new("view").unwrap().as_ptr());
-    };  
-    unsafe {
-        gl::Enable(gl::DEPTH_TEST);
-        gl::DepthFunc(gl::LESS);
-    }
-    
+                let mut time_location = 0;
+                unsafe {
+                    time_location = gl::GetUniformLocation(shader_program, CString::new("time").unwrap().as_ptr());
+                };
+                let mut projection_location = 0;
+                unsafe {
+                    projection_location = gl::GetUniformLocation(shader_program, CString::new("projection").unwrap().as_ptr());
+                };
+                let mut view_location = 0;
+                let mut camera = Camera::default();
+                unsafe {
+                    view_location = gl::GetUniformLocation(shader_program, CString::new("view").unwrap().as_ptr());
+                };  
+                unsafe {
+                    gl::Enable(gl::DEPTH_TEST);
+                    gl::DepthFunc(gl::LESS);
+                }
+                let mut player = Player::new();
+                let mut blocked = false;
+                let (mut w, mut s, mut a, mut d) = (false, false, false, false);
+
     event_loop.run(move |event, _, control_flow| {
         *control_flow = ControlFlow::Poll;
 
@@ -140,14 +146,17 @@ pub fn draw(mut vertices: Vec<f32>) {
                         println!("{interval} {}", 1000000/interval);
                     }
                     delta = start_time.elapsed().as_micros();
-                    let d = delta as f32/1e6/2.0;
-                    let r = 120.0;
-                    let camera_position = Point3::new(r*d.sin(), 30.25, r*d.cos());
-                    camera.set_camera_position(camera_position);
-
+                    player.go(w, s, a, d, interval as f32*1e-6);
+                    let d = delta as f32/1e6/21.0;
+                    //let r = 120.0;
+                    //let camera_position = Vec3::new(r*d.sin(), 30.25, r*d.cos());
+                    camera.set_camera_position(player.get_position());
+                    ///println!("{}", camera.get_camera_position());
+                    camera.set_look_at(player.get_rotation().to_direction(Vec3::FORWARD)+camera.get_camera_position());
 
                         gl::Uniform1f(time_location, d);
-                        gl::UniformMatrix4fv(projection_location, 1, gl::FALSE, camera.get_projection_matrix().as_ptr());
+                        let ratio = gl_window.window().inner_size().width as f32/gl_window.window().inner_size().height as f32;
+                        gl::UniformMatrix4fv(projection_location, 1, gl::FALSE, camera.get_projection_matrix(ratio).as_ptr());
                         gl::UniformMatrix4fv(view_location, 1, gl::FALSE, camera.get_view_matrix().as_ptr());
                         gl::DrawArrays(gl::TRIANGLES, 0, (vertices.len()/6) as i32);
                     
@@ -157,24 +166,85 @@ pub fn draw(mut vertices: Vec<f32>) {
             },
             Event::WindowEvent { event: WindowEvent::KeyboardInput { input: KeyboardInput { state, virtual_keycode, .. }, .. }, .. } => {
                 if let Some(keycode) = virtual_keycode {
-                    let mut camera_position = camera.get_camera_position();
-                    let movement_speed = 5e-1;
                     match (keycode, state) {
                         (VirtualKeyCode::W, ElementState::Pressed) => {
-                            camera_position.z -= movement_speed; // Ruch do przodu
+                            w=true;
                         }
                         (VirtualKeyCode::S, ElementState::Pressed) => {
-                            camera_position.z += movement_speed; // Ruch do tyłu
+                            s=true;
                         }
                         (VirtualKeyCode::A, ElementState::Pressed) => {
-                            camera_position.x -= movement_speed; // Ruch w lewo
+                            a=true;
                         }
                         (VirtualKeyCode::D, ElementState::Pressed) => {
-                            camera_position.x += movement_speed; // Ruch w prawo
+                            d=true;
+                        }
+                        (VirtualKeyCode::W, ElementState::Released) => {
+                            w=false;
+                        }
+                        (VirtualKeyCode::S, ElementState::Released) => {
+                            s=false;
+                        }
+                        (VirtualKeyCode::A, ElementState::Released) => {
+                            a=false;
+                        }
+                        (VirtualKeyCode::D, ElementState::Released) => {
+                            d=false;
+                        }
+
+                        (VirtualKeyCode::E, ElementState::Pressed) => {
+                            blocked=!blocked;
+                            let window = gl_window.window();
+                            let size = window.inner_size();
+                            let center_x = size.width as f64 / 2.0;
+                            let center_y = size.height as f64 / 2.0;
+
+                            window.set_cursor_position(glutin::dpi::PhysicalPosition::new(center_x, center_y))
+                            .expect("Nie można ustawić pozycji kursora");
+                            gl_window.window().set_cursor_visible(!blocked);
                         }
                         _ => {}
                     }
-                    camera.set_camera_position(camera_position);
+                }
+            },
+            Event::WindowEvent {
+                event: WindowEvent::Resized(size),
+                ..
+            } => {
+                // Aktualizacja viewportu po zmianie rozmiaru okna
+                //gl::viewport(0, 0, size.width as i32, size.height as i32);
+                unsafe {
+                    gl::Viewport(0 as i32, 0 as i32, size.width as i32, size.height as i32);
+                }
+                println!("Nowy rozmiar okna: {:?}", size);
+            },
+            Event::WindowEvent { event: WindowEvent::CursorMoved { position , .. }, .. } => {
+                if blocked{
+                    let window = gl_window.window();
+                    let size = window.inner_size();
+                    let center_x = size.width as f64 / 2.0;
+                    let center_y = size.height as f64 / 2.0;
+
+
+                    
+                    let delta_x = position.x - center_x;
+                    let delta_y = position.y - center_y;
+                    
+                    let mouse_sensivity= 0.005;
+                    player.rotate(delta_x as f32, delta_y as f32, mouse_sensivity);
+                
+                    window.set_cursor_position(glutin::dpi::PhysicalPosition::new(center_x, center_y))
+                    .expect("Nie można ustawić pozycji kursora");
+                }
+            },
+            Event::WindowEvent {
+                event: WindowEvent::Focused(focused),
+                ..
+            } => {
+                // Ustaw flagę w zależności od stanu fokusu
+                if !focused{
+                    blocked=false;
+                    gl_window.window().set_cursor_visible(!blocked);
                 }
             }
             _ => (),

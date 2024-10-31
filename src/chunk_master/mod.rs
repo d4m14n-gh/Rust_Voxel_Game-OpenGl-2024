@@ -1,17 +1,19 @@
 use dashmap::DashMap;
-use crate::{Chunk, Coord3};
+use crate::{chunk::Chunk, math::Coord3};
 
-const CHUNK_SIZE: usize = 8;
+const CHUNK_SIZE: usize = 16;
 
-pub struct ChunkMaster(DashMap<Coord3, Chunk>);
-impl Default for ChunkMaster {
-    fn default() -> Self {
-        ChunkMaster(DashMap::new())
-    }
+pub trait ChunkMaster {
+    fn get_voxel(&self, world_position: Coord3) -> usize;
 }
-impl ChunkMaster {
-    pub fn get_voxel(position: Coord3){
-        let chunk_positoin = position.div_euclid(CHUNK_SIZE as i32);
-        let voxel_local_positoin = position.mod_euclid(CHUNK_SIZE as i32);
+impl ChunkMaster for DashMap<Coord3, Chunk> {
+    #[inline]
+    fn get_voxel(&self, world_position: Coord3) -> usize{
+        let chunk_position = world_position.div_euclid(CHUNK_SIZE as i32);
+        let local_position = world_position.mod_euclid(CHUNK_SIZE as i32);
+        if let Some(chunkerz) = self.get(&chunk_position){
+            return chunkerz.get_voxel(local_position);
+        }
+        0
     }
 }

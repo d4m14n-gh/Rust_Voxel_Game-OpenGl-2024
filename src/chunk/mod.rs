@@ -1,6 +1,5 @@
 use dashmap::DashMap;
-
-use crate::{c3d3, coords::Coord3};
+use crate::{c3d3, chunk_master::ChunkMaster, math::Coord3};
 
 #[derive(Clone)]
 pub struct Chunk{
@@ -24,6 +23,7 @@ impl Chunk {
         | (local_position.y == 0) | (local_position.y == Chunk::CHUNK_SIZE as i32-1)
         | (local_position.z == 0) | (local_position.z == Chunk::CHUNK_SIZE as i32-1)
     }
+    #[inline]
     pub fn is_outer(local_position: Coord3) -> bool{
         (local_position.x < 0) | (local_position.x >= Chunk::CHUNK_SIZE as i32)
         | (local_position.y < 0) | (local_position.y >= Chunk::CHUNK_SIZE as i32)
@@ -40,9 +40,11 @@ impl Chunk {
             (index%Chunk::CHUNK_SIZE) as i32
         )
     }
+    #[inline]
     pub fn get_world_position(&self, local_posiotion: Coord3) -> Coord3{
         self.chunk_position*Chunk::CHUNK_SIZE as i32+local_posiotion
     }
+    #[inline]
     pub fn get_voxel(&self, local_position: Coord3) -> usize{
         self.voxels_table[Chunk::get_index(local_position)]
     }
@@ -66,9 +68,10 @@ impl Chunk {
     pub fn get_voxels(&self) -> &Vec<usize>{
         &self.voxels
     }
-    pub fn calculate_faces_table(&self) -> Vec<u8>{
+    pub fn calculate_faces_table(&self, master: &dyn ChunkMaster) -> Vec<u8>{
         let mut faces_table = [0 as u8; Chunk::CHUNK_SIZE.pow(3)];
         let iterator = ChunkCoordsIterator::new();
+        let neighbors: Vec<Coord3> = Coord3::neighbors_into_iter().collect();
         for local_position in iterator{
                     let index: usize = Chunk::get_index(local_position);
                     let mut mesh_type_mask: u8 = 0b00000000;
@@ -76,10 +79,18 @@ impl Chunk {
                     if self.get_voxel(local_position) == 0{
                         continue;
                     }
-                    for pair in Coord3::neightbors_into_iter().zip(0..6){
-                        let pos = local_position+pair.0;
-                        if !Chunk::is_outer(pos) && self.get_voxel(pos) != 0{
-                            mesh_type_mask |= 1<<pair.1;
+                    for i in 0..6{
+                        let pos = local_position+neighbors[i];
+                        let block_type = if Chunk::is_outer(pos){
+                            let world_position = self.get_world_position(pos);
+                            master.get_voxel(world_position)
+                        }
+                        else{
+                            self.get_voxel(pos)
+                        };
+                        
+                        if block_type != 0{
+                            mesh_type_mask |= 1<<i;
                         }
                     }
                     faces_table[index]=mesh_type_mask;

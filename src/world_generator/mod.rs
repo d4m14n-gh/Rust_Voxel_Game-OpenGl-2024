@@ -3,7 +3,7 @@ use std::usize;
 use nalgebra::Vector3;
 use noise::{NoiseFn, Perlin};
 
-use crate::{coords::Coord3, Chunk, ChunkCoordsIterator};
+use crate::{math::Coord3, Chunk, ChunkCoordsIterator};
 
 pub enum BlockType {
     Air = 0,
@@ -34,14 +34,15 @@ pub struct WorldGenerator{
 impl Default for WorldGenerator{
     fn default() -> Self {
         WorldGenerator{
-            seed: 2137,
-            perlin: Perlin::new(2137)
+            seed: 69,//2137,
+            perlin: Perlin::new(69)
         }
     }
 }
 impl WorldGenerator {
     const STONE_LAYER: i32 = 5;
     const WATER_LEVEL: i32 = 4;
+    const RANGE: i32 = 400;
     pub fn get_terrein_height(&self, world_position: Coord3) -> i32{
         let frequency: f64 = 0.015;
         let frequency2: f64 = 0.15;
@@ -66,7 +67,7 @@ impl WorldGenerator {
         let wy = world_position.y;
         let th = self.get_terrein_height(world_position);
 
-        if world_position.distance2(Coord3::default()) > 50*50{
+        if world_position.distance2(Coord3::default()) > Self::RANGE.pow(2){
             return BlockType::Air;
         }     
         else if wy == th && wy > WorldGenerator::WATER_LEVEL+1{

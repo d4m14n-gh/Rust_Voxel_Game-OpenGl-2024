@@ -1,6 +1,7 @@
 mod chunk;
 mod chunk_loader;
-mod coords;
+mod chunk_master;
+mod math;
 
 pub mod prelude{
     // pub use crate::chunk::*;
