@@ -2,40 +2,20 @@ use std::usize;
 
 use nalgebra::Vector3;
 use noise::{NoiseFn, Perlin};
+use rayon::range;
 
-use crate::{math::Coord3, Chunk, ChunkCoordsIterator};
-
-pub enum BlockType {
-    Air = 0,
-    Stone = 1,
-    Dirt = 2,
-    Grass = 3,
-    Water = 4,
-    Sand = 5,
-}
-
-impl BlockType {
-    pub fn from_usize(value: usize) -> BlockType{
-        match value {
-            1 => BlockType::Stone,
-            2 => BlockType::Dirt,
-            3 => BlockType::Grass,
-            4 => BlockType::Water,
-            5 => BlockType::Sand,
-            _ => BlockType::Air
-        }
-    }
-}
+use crate::{block::BlockType, math::Coord3, Chunk, ChunkCoordsIterator};
 
 pub struct WorldGenerator{
     seed: u32,
     perlin: Perlin
 }
+const SEED: u32 = 2137;
 impl Default for WorldGenerator{
     fn default() -> Self {
         WorldGenerator{
-            seed: 69,//2137,
-            perlin: Perlin::new(69)
+            seed: SEED,//2137,
+            perlin: Perlin::new(SEED)
         }
     }
 }
@@ -88,21 +68,14 @@ impl WorldGenerator {
         BlockType::Air
     }
     pub fn generate_chunk(&self, chunk: &mut Chunk){
+        if chunk.get_chunk_position().distance2(Coord3::new(0, 0, 0))>(WorldGenerator::RANGE/Chunk::CHUNK_SIZE as i32+2).pow(2){
+            return;
+        }
         for local_position in ChunkCoordsIterator::new(){
-            let voxel_type = self.get_voxel_type(chunk.get_world_position(local_position)) as usize;
-            if voxel_type != 0{
+            let voxel_type = self.get_voxel_type(chunk.get_world_position(local_position));
+            if voxel_type != BlockType::Air{
                 chunk.set_voxel(local_position, voxel_type);
             }
-        }
-    }
-    pub fn get_color(block_type: usize) -> Vector3<f32>{
-        match BlockType::from_usize(block_type) {
-            BlockType::Dirt => Vector3::new(0.5, 0.25, 0.1), //133, 67, 18
-            BlockType::Grass => Vector3::new(0.1, 0.3, 0.0),
-            BlockType::Stone => Vector3::new(0.2, 0.2, 0.2),
-            BlockType::Water => Vector3::new(0.1, 0.2, 0.5),
-            BlockType::Sand => Vector3::new(0.7, 0.5, 0.1), //rgb(229, 192, 123)
-            _ => Vector3::new(0.0, 0.0, 0.2),
         }
     }
 }

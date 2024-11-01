@@ -23,20 +23,32 @@ const VERTEX_SHADER: &str = r#"
     uniform mat4 view;
     uniform mat4 projection;
 
-    out vec3 color;
+    out vec4 color;
     void main() {
-        gl_Position = projection * view * vec4(position.x, position.y, position.z, 1.0);
-        color = aColor;
+        float yo = 0.0f;
+        if(aColor.z > 0.35f){
+            color = vec4(0.05f, 0.15f, aColor.b, 0.95f);
+            vec3 direction = vec3(aColor.r, 0.0f, sqrt(1-aColor.r*aColor.r));
+            float sins = sin((position.z*direction.z+position.x*direction.x)*2-time*150.0f)/16.0f;
+            float sins2 = sin(sqrt(position.z*position.z+position.x*position.x)*2-time*150.0f)/16.0f;
+            float sinsum = sins;//(sins+sins2)/2.0f;
+            yo=((sinsum*16.0f)-1)/5.0f;
+            color.b += sinsum/7.0f;
+            color.g += sinsum/7.0f;
+        }
+        else
+            color = vec4(aColor, 1.0f);
+        gl_Position = projection * view * vec4(position.x, position.y+yo, position.z, 1.0);
     }
 "#;
 
 // Fragment shader w GLSL
 const FRAGMENT_SHADER: &str = r#"
     #version 330 core
-    in vec3 color;
+    in vec4 color;
     out vec4 FragColor;
     void main() {
-        FragColor = vec4(color.x, color.y, color.z, 0.2); // Pomarańczowy kolor
+        FragColor = color; // Pomarańczowy kolor
     }
 "#;
 
@@ -154,6 +166,9 @@ pub fn draw(mut vertices: Vec<f32>) {
                     ///println!("{}", camera.get_camera_position());
                     camera.set_look_at(player.get_rotation().to_direction(Vec3::FORWARD)+camera.get_camera_position());
 
+                        //gl::Enable(gl::BLEND);
+                        //gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+                        //gl::DepthMask(gl::FALSE);
                         gl::Uniform1f(time_location, d);
                         let ratio = gl_window.window().inner_size().width as f32/gl_window.window().inner_size().height as f32;
                         gl::UniformMatrix4fv(projection_location, 1, gl::FALSE, camera.get_projection_matrix(ratio).as_ptr());
