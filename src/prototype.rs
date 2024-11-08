@@ -17,28 +17,35 @@ use crate::Vec3;
 const VERTEX_SHADER: &str = r#"
     #version 330 core
     layout (location = 0) in vec3 position;
-    layout(location = 1) in vec3 aColor;
+    layout (location = 1) in vec3 aColor;
+    layout (location = 2) in vec3 aNormal;
     
     uniform float time;
     uniform mat4 view;
     uniform mat4 projection;
 
+    out vec3 normal;
+    out vec3 fragPos;
     out vec4 color;
+
     void main() {
         float yo = 0.0f;
         if(aColor.z > 0.35f){
-            color = vec4(0.05f, 0.15f, aColor.b, 0.95f);
+            color = vec4(0.046,0.245,0.408, 0.9f); //
             vec3 direction = vec3(aColor.r, 0.0f, sqrt(1-aColor.r*aColor.r));
             float sins = sin((position.z*direction.z+position.x*direction.x)*2-time*150.0f)/16.0f;
             float sins2 = sin(sqrt(position.z*position.z+position.x*position.x)*2-time*150.0f)/16.0f;
             float sinsum = sins;//(sins+sins2)/2.0f;
             yo=((sinsum*16.0f)-1)/5.0f;
-            color.b += sinsum/7.0f;
-            color.g += sinsum/7.0f;
+            color.b += sinsum/7.7f;
+            color.g += sinsum/7.7f;
         }
         else
             color = vec4(aColor, 1.0f);
-        gl_Position = projection * view * vec4(position.x, position.y+yo, position.z, 1.0);
+        normal = aNormal;
+        vec4 ret = projection * view * vec4(position.x, position.y+yo, position.z, 1.0);
+        gl_Position = ret;
+        fragPos = vec3(position.x, position.y+yo, position.z);
     }
 "#;
 
@@ -46,19 +53,37 @@ const VERTEX_SHADER: &str = r#"
 const FRAGMENT_SHADER: &str = r#"
     #version 330 core
     in vec4 color;
+    in vec3 normal;
+    in vec3 fragPos;
+
+    uniform vec3 viewVector;
+    uniform vec3 lightPos;
+    uniform vec3 lightColor;
+    
     out vec4 FragColor;
     void main() {
-        FragColor = color; // Pomarańczowy kolor
+        FragColor = color;
+
+        vec3 ambientLight = vec3(1, 1, 1);
+        float ambientIntensity = 4;
+        ambientLight = ambientLight * ambientIntensity;
+        
+        vec3 lightDir = normalize(lightPos - fragPos);
+        float diff = max(dot(normalize(normal), lightDir), 0.0);
+        diff = (log2(diff+1)+1.0)/2.0;
+
+        vec3 diffuse = ambientLight * diff * lightColor * color.xyz;
+        FragColor = vec4(diffuse, 0.9f);
     }
 "#;
 
-pub fn draw(mut vertices: Vec<f32>) {
+pub fn draw(mut vertices: Vec<f32>, mut vertices_water: Vec<f32>) {
     let event_loop = EventLoop::new();
     let window_builder = WindowBuilder::new()
         .with_title("OpenGL game")
         .with_inner_size(LogicalSize::new(800.0, 600.0));
 
-    let gl_window = ContextBuilder::new()
+    let gl_window: glutin::ContextWrapper<glutin::NotCurrent, glutin::window::Window> = ContextBuilder::new()
         .with_vsync(false)
         .build_windowed(window_builder, &event_loop)
         .unwrap();
@@ -93,7 +118,7 @@ pub fn draw(mut vertices: Vec<f32>) {
             3,
             gl::FLOAT,
             gl::FALSE,
-            (6 * std::mem::size_of::<f32>()) as i32,
+            (9 * std::mem::size_of::<f32>()) as i32,
             std::ptr::null(),
         );
 
@@ -103,8 +128,68 @@ pub fn draw(mut vertices: Vec<f32>) {
             3,
             gl::FLOAT,
             gl::FALSE,
-            (6 * std::mem::size_of::<f32>()) as i32,
+            (9 * std::mem::size_of::<f32>()) as i32,
             (3 * std::mem::size_of::<f32>()) as *const () as *const _,
+        );
+
+        gl::EnableVertexAttribArray(2);
+        gl::VertexAttribPointer(
+            2,
+            3,
+            gl::FLOAT,
+            gl::FALSE,
+            (9 * std::mem::size_of::<f32>()) as i32,
+            (6 * std::mem::size_of::<f32>()) as *const () as *const _,
+        );
+    }
+
+    let mut vbo2 = 0;
+    let mut vao2 = 0;
+
+    unsafe {
+        // Generowanie VAO
+        gl::GenVertexArrays(1, &mut vao2);
+        gl::BindVertexArray(vao2);
+
+        // Generowanie VBO
+        gl::GenBuffers(1, &mut vbo2);
+        gl::BindBuffer(gl::ARRAY_BUFFER, vbo2);
+        gl::BufferData(
+            gl::ARRAY_BUFFER,
+            (vertices_water.len() * std::mem::size_of::<f32>()) as gl::types::GLsizeiptr,
+            vertices_water.as_ptr() as *const _,
+            gl::STATIC_DRAW,
+        );
+
+        // Ustawianie atrybutów wierzchołków
+        gl::EnableVertexAttribArray(0);
+        gl::VertexAttribPointer(
+            0,
+            3,
+            gl::FLOAT,
+            gl::FALSE,
+            (9 * std::mem::size_of::<f32>()) as i32,
+            std::ptr::null(),
+        );
+
+        gl::EnableVertexAttribArray(1);
+        gl::VertexAttribPointer(
+            1,
+            3,
+            gl::FLOAT,
+            gl::FALSE,
+            (9 * std::mem::size_of::<f32>()) as i32,
+            (3 * std::mem::size_of::<f32>()) as *const () as *const _,
+        );
+
+        gl::EnableVertexAttribArray(2);
+        gl::VertexAttribPointer(
+            2,
+            3,
+            gl::FLOAT,
+            gl::FALSE,
+            (9 * std::mem::size_of::<f32>()) as i32,
+            (6 * std::mem::size_of::<f32>()) as *const () as *const _,
         );
     }
 
@@ -123,6 +208,20 @@ pub fn draw(mut vertices: Vec<f32>) {
                 unsafe {
                     projection_location = gl::GetUniformLocation(shader_program, CString::new("projection").unwrap().as_ptr());
                 };
+                
+                let mut lpos = 0;
+                unsafe {
+                    lpos = gl::GetUniformLocation(shader_program, CString::new("lightPos").unwrap().as_ptr());
+                };
+                let mut vpos = 0;
+                unsafe {
+                    vpos = gl::GetUniformLocation(shader_program, CString::new("viewVector").unwrap().as_ptr());
+                };
+                let mut lcol = 0;
+                unsafe {
+                    lcol = gl::GetUniformLocation(shader_program, CString::new("lightColor").unwrap().as_ptr());
+                };
+
                 let mut view_location = 0;
                 let mut camera = Camera::default();
                 unsafe {
@@ -131,6 +230,8 @@ pub fn draw(mut vertices: Vec<f32>) {
                 unsafe {
                     gl::Enable(gl::DEPTH_TEST);
                     gl::DepthFunc(gl::LESS);
+                    gl::Enable(gl::CULL_FACE);
+                    gl::CullFace(gl::BACK);
                 }
                 let mut player = Player::new();
                 let mut blocked = false;
@@ -149,32 +250,42 @@ pub fn draw(mut vertices: Vec<f32>) {
                     gl::ClearColor(0.2, 0.3, 0.3, 1.0);
                     gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
                     gl::UseProgram(shader_program);
+                    
+                            let interval = start_time.elapsed().as_micros()-delta;
+                            frame_cnt+=1;
+                            if frame_cnt%100 == 0 {
+                                println!("{interval} {}", 1000000/interval);
+                            }
+                            delta = start_time.elapsed().as_micros();
+                            player.go(w, s, a, d, interval as f32*1e-6);
+                            let d = delta as f32/1e6/21.0;
+                            //let r = 120.0;
+                            //let camera_position = Vec3::new(r*d.sin(), 30.25, r*d.cos());
+                            camera.set_camera_position(player.get_position());
+                            ///println!("{}", camera.get_camera_position());
+                            let view_vector = player.get_rotation().to_direction(Vec3::FORWARD);
+                            camera.set_look_at(view_vector+camera.get_camera_position());
+                            let ratio = gl_window.window().inner_size().width as f32/gl_window.window().inner_size().height as f32;
+
+                    gl::Uniform1f(time_location, d);
+                    
+                    gl::Uniform3f(lpos, 0.0, 135.0, 0.0);
+                    gl::Uniform3f(lcol, 0.2, 0.2, 0.15);
+                    gl::Uniform3f(vpos, view_vector.x, view_vector.y, view_vector.z);
+
+                    gl::UniformMatrix4fv(projection_location, 1, gl::FALSE, camera.get_projection_matrix(ratio).as_ptr());
+                    gl::UniformMatrix4fv(view_location, 1, gl::FALSE, camera.get_view_matrix().as_ptr());
+
                     gl::BindVertexArray(vao);
-                    
+                    gl::Disable(gl::BLEND);
+                    gl::Enable(gl::CULL_FACE);
+                    gl::DrawArrays(gl::TRIANGLES, 0, (vertices.len()/9) as i32);
 
-                    let interval = start_time.elapsed().as_micros()-delta;
-                    frame_cnt+=1;
-                    if frame_cnt%100 == 0 {
-                        println!("{interval} {}", 1000000/interval);
-                    }
-                    delta = start_time.elapsed().as_micros();
-                    player.go(w, s, a, d, interval as f32*1e-6);
-                    let d = delta as f32/1e6/21.0;
-                    //let r = 120.0;
-                    //let camera_position = Vec3::new(r*d.sin(), 30.25, r*d.cos());
-                    camera.set_camera_position(player.get_position());
-                    ///println!("{}", camera.get_camera_position());
-                    camera.set_look_at(player.get_rotation().to_direction(Vec3::FORWARD)+camera.get_camera_position());
-
-                        //gl::Enable(gl::BLEND);
-                        //gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
-                        //gl::DepthMask(gl::FALSE);
-                        gl::Uniform1f(time_location, d);
-                        let ratio = gl_window.window().inner_size().width as f32/gl_window.window().inner_size().height as f32;
-                        gl::UniformMatrix4fv(projection_location, 1, gl::FALSE, camera.get_projection_matrix(ratio).as_ptr());
-                        gl::UniformMatrix4fv(view_location, 1, gl::FALSE, camera.get_view_matrix().as_ptr());
-                        gl::DrawArrays(gl::TRIANGLES, 0, (vertices.len()/6) as i32);
-                    
+                    gl::BindVertexArray(vao2);
+                    gl::Enable(gl::BLEND);
+                    gl::Disable(gl::CULL_FACE);
+                    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+                    gl::DrawArrays(gl::TRIANGLES, 0, (vertices_water.len()/9) as i32);   
                 }
 
                 gl_window.swap_buffers().unwrap();

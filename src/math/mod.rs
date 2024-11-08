@@ -52,6 +52,7 @@ impl Mul<i32> for Coord3 {
     }
 }
 impl Coord3 {
+    pub const ZERO: Self = Coord3::new(0, 0, 0);
     pub const fn from_tuple(tp: &(i32, i32, i32)) -> Coord3 {
         Coord3{
             x: tp.0,
@@ -95,6 +96,9 @@ impl Coord3 {
         c3d3!(self.x.rem_euclid(value), self.y.rem_euclid(value), self.z.rem_euclid(value))
     }
 
+    pub fn bin_hash(&self) -> i32{
+        self.x*4+self.y*2+self.z
+    }
     pub fn to_usize3(&self) -> Result<(usize, usize, usize), String>{
         if self.x<0 || self.y<0 || self.z<0{
             return Err("Wrong value".to_string())
@@ -107,7 +111,7 @@ impl Coord3 {
     pub fn lower(&self) -> Coord3{
         *self+c3d3!(0, -1, 0)
     }
-    #[inline]
+    #[inline(always)]
     pub fn neighbors_into_iter() -> IntoIter<Coord3, 6>{
         const NEIGHTBORS: [Coord3; 6]  = [
             c3d3!(0, 1, 0), c3d3!(0, -1, 0), c3d3!(1, 0, 0), 

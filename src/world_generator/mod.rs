@@ -11,18 +11,17 @@ pub struct WorldGenerator{
     perlin: Perlin
 }
 const SEED: u32 = 2137;
-impl Default for WorldGenerator{
-    fn default() -> Self {
-        WorldGenerator{
-            seed: SEED,//2137,
-            perlin: Perlin::new(SEED)
-        }
-    }
-}
 impl WorldGenerator {
     const STONE_LAYER: i32 = 5;
     const WATER_LEVEL: i32 = 4;
-    const RANGE: i32 = 400;
+    const RANGE: i32 = 300;
+    pub fn new(seed: u32) -> WorldGenerator{
+        WorldGenerator{
+            seed,
+            perlin: Perlin::new(seed)
+        }
+    }
+    #[inline(always)]
     pub fn get_terrein_height(&self, world_position: Coord3) -> i32{
         let frequency: f64 = 0.015;
         let frequency2: f64 = 0.15;
@@ -43,11 +42,12 @@ impl WorldGenerator {
         elevation
         //(7.0*(world_position.x as f32/10.0+world_position.z as f32/20.0).sin()+2.0) as i32
     }
+    #[inline(always)]
     pub fn get_voxel_type(&self, world_position: Coord3) -> BlockType{
         let wy = world_position.y;
         let th = self.get_terrein_height(world_position);
 
-        if world_position.distance2(Coord3::default()) > Self::RANGE.pow(2){
+        if world_position.distance2(Coord3::ZERO) > Self::RANGE.pow(2){
             return BlockType::Air;
         }     
         else if wy == th && wy > WorldGenerator::WATER_LEVEL+1{
@@ -68,14 +68,51 @@ impl WorldGenerator {
         BlockType::Air
     }
     pub fn generate_chunk(&self, chunk: &mut Chunk){
-        if chunk.get_chunk_position().distance2(Coord3::new(0, 0, 0))>(WorldGenerator::RANGE/Chunk::CHUNK_SIZE as i32+2).pow(2){
+        let chunk_range = WorldGenerator::RANGE/Chunk::CHUNK_SIZE as i32+3;
+        if chunk.get_chunk_position().distance2(Coord3::ZERO)>(chunk_range).pow(2){
             return;
         }
-        for local_position in ChunkCoordsIterator::new(){
-            let voxel_type = self.get_voxel_type(chunk.get_world_position(local_position));
-            if voxel_type != BlockType::Air{
-                chunk.set_voxel(local_position, voxel_type);
+        for x in 0..Chunk::CHUNK_SIZE{
+            for z in 0..Chunk::CHUNK_SIZE{  
+                let mut world_position = chunk.get_world_position(Coord3::new(x as i32, 0, z as i32)); 
+                world_position.y = 0;
+                if world_position.distance2(Coord3::ZERO)>Self::RANGE.pow(2){
+                    //continue;
+                }
+                for y in 0..Chunk::CHUNK_SIZE{
+                    let local_position = Coord3::new(x as i32, y as i32, z as i32); 
+                    let world_position = chunk.get_world_position(local_position); 
+                    let h = self.get_terrein_height(world_position);
+                    if world_position.y > h && world_position.y >= WorldGenerator::WATER_LEVEL{
+                        break;
+                    }
+                    let block_type = self.get_voxel_type(world_position);
+                    if block_type != BlockType::Air{
+                        chunk.set_voxel(local_position, block_type);
+                    }
+                }
             }
         }
+    }
+    pub fn generate_world(&self) -> Vec<(Coord3, BlockType)>{
+        let mut blocks: Vec<(Coord3, BlockType)> = Vec::new();
+        for x in -WorldGenerator::RANGE..-WorldGenerator::RANGE+1{
+            for z in -WorldGenerator::RANGE..-WorldGenerator::RANGE+1{
+                let mut world_position = Coord3::new(x, 0, z); 
+                if world_position.distance2(Coord3::ZERO)>WorldGenerator::RANGE.pow(2){
+                    continue;
+                }
+                else {
+                    for y in -WorldGenerator::RANGE..self.get_terrein_height(world_position)+1{
+                        world_position.y = y;
+                        let block_type = self.get_voxel_type(world_position);
+                        if block_type != BlockType::Air{
+                            blocks.push((world_position, block_type));
+                        }
+                    }
+                }
+            }
+        }
+        blocks
     }
 }

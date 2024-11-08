@@ -17,6 +17,13 @@ impl Default for  Camera{
     }
 }
 impl Camera {
+    pub fn new() -> Self{
+        Camera{
+            position: Vec3::new(0.0, 40.0, -3.25),
+            look_at: Vec3::new(0.0, 0.0, 0.0),
+            up_vector: Vector3::new(0.0, 1.0, 0.0)
+        }
+    }
     pub fn get_camera_position(&self) -> Vec3{
         self.position
     }

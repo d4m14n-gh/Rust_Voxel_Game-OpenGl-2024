@@ -9,7 +9,7 @@ pub enum BlockType {
     Dirt = 2,
     Grass = 3,
     Water = 4, 
-    Sand = 5,
+    Sand = 5
 }
 
 impl Into<u16> for BlockType {
@@ -30,9 +30,16 @@ impl BlockType {
             BlockType::Dirt => Vector3::new(0.5, 0.25, 0.1), //133, 67, 18
             BlockType::Grass => Vector3::new(0.1, 0.3, 0.0),
             BlockType::Stone => Vector3::new(0.2, 0.2, 0.2),
-            BlockType::Water => Vector3::new(0.05, 0.15, 0.5),
+            BlockType::Water => Vector3::new(163./255., 206./255., 219./255.), //163, 206, 219
             BlockType::Sand => Vector3::new(0.7, 0.5, 0.1), //rgb(229, 192, 123)
             _ => Vector3::new(0.0, 0.0, 0.2),
+        }
+    }
+    pub fn is_transparent(self) -> bool{
+        match self {
+            BlockType::Air => true, //133, 67, 18
+            BlockType::Water => true,
+            _ => false,
         }
     }
 }

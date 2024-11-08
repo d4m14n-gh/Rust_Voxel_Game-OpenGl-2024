@@ -34,9 +34,7 @@ impl Player {
     pub fn rotate(&mut self, delta_x: f32, delta_y: f32, mouse_sensivity: f32){      
         let pitch = delta_y*mouse_sensivity;
         let yaw = -delta_x*mouse_sensivity;
-
-
-        //self.rotation = Quat::from_rotation(PI/2.0, Vec3::FORWARD)
+ 
         self.rotation = Quat::from_rotation(yaw, Vec3::UP)*self.rotation;
         self.rotation = self.rotation*Quat::from_rotation(pitch, Vec3::RIGHT);
         self.rotation = self.rotation.normalize();
@@ -47,5 +45,8 @@ impl Player {
     }
     pub fn get_position(&self) -> Vec3{
         self.position
+    }
+    pub fn set_position(&mut self, position: Vec3){
+        self.position = position;
     }
 }

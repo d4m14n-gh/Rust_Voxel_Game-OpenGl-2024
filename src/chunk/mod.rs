@@ -4,20 +4,20 @@ use crate::{c3d3, chunk_master::ChunkMaster, math::Coord3, block::BlockType};
 #[derive(Clone)]
 pub struct Chunk{
     chunk_position: Coord3,
-    voxels_table: [BlockType; Chunk::CHUNK_SIZE.pow(3)],
+    voxels_table: Box<[BlockType; Chunk::CHUNK_SIZE.pow(3)]>,
     voxels: Vec<usize>
 }
 impl Default for Chunk{
     fn default() -> Self {
         Chunk{
             chunk_position: Coord3::new(0, 0, 0),
-            voxels_table: [BlockType::Air; Chunk::CHUNK_SIZE.pow(3)],
+            voxels_table: Box::new([BlockType::Air; Chunk::CHUNK_SIZE.pow(3)]),
             voxels: Vec::new()
         }
     }
 }
 impl Chunk {
-    pub const CHUNK_SIZE: usize = 20;
+    pub const CHUNK_SIZE: usize = 50;
     #[inline(always)]
     pub fn is_border(local_position: Coord3) -> bool{
         (local_position.x == 0) | (local_position.x == Chunk::CHUNK_SIZE as i32-1)
