@@ -11,7 +11,8 @@
 ### ⚠️🛠️ Work in progress
 
 ## 📜 About the project
-Voxel game written in Rust. The project is based on the Bevy game engine, a data-driven engine built in Rust. The project includes custom world generation, a block and chunk system, optimizations such as a greedy mesher, and custom graphical effects like ambient occlusion.
+Voxel game written in Rust. The project uses the OpenGL. It includes custom world generation, a block and chunk system, custom rendering, custom vertex and fragment shaders, custom ambient diffusion lighting, cylinder projection, water shaders, and graphical effects like ambient occlusion. Additionally, it features a simple level-of-detail voxel system.
+
 
 ### 📜 About the O'Neill cylinder
 ![image](https://github.com/user-attachments/assets/bd4f28e9-61ce-4af4-b213-ef4b695c0fd4)
